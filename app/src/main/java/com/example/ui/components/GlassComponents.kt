@@ -272,11 +272,12 @@ fun TradingCategoryHeader(
 }
 
 /**
- * Dark Translucent Rounded Action Button (e.g. "المحفظة" or "الصفقات").
+ * Dark Translucent Rounded Action Button (e.g. "المحفظة" with balance or "الصفقات" with count).
  */
 @Composable
 fun TranslucentActionButton(
     text: String,
+    subText: String? = null,
     onClick: () -> Unit,
     testTag: String,
     modifier: Modifier = Modifier
@@ -335,13 +336,39 @@ fun TranslucentActionButton(
                 )
         )
 
-        Text(
-            text = text,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
-            textAlign = TextAlign.Center
-        )
+        if (subText != null) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = text,
+                    fontSize = if (text.length > 9) 18.sp else 21.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NeonCyan.copy(alpha = 0.95f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+            }
+        } else {
+            Text(
+                text = text,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 

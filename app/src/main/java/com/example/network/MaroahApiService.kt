@@ -65,7 +65,10 @@ data class TradeRequest(
 data class TradeExecutionResponse(
     val success: Boolean = false,
     val message: String = "",
-    val order: TradeItemDto? = null
+    val order: TradeItemDto? = null,
+    val activeTradesCount: Int? = null,
+    val profitValue: Double? = null,
+    val lossValue: Double? = null
 )
 
 interface MaroahApiService {

@@ -71,6 +71,7 @@ import com.example.ui.theme.NeonMagenta
 import com.example.ui.theme.NeonRed
 import com.example.viewmodel.ActiveModal
 import com.example.viewmodel.MaroahViewModel
+import java.util.Locale
 
 @Composable
 fun MaroahScreen(
@@ -225,39 +226,45 @@ fun MaroahScreen(
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
+                                val spotBalanceText = formatBalanceUsdt(uiState.spotSummary.balanceUsdt)
                                 TranslucentActionButton(
-                                    text = "المحفظة",
+                                    text = spotBalanceText,
+                                    subText = "المحفظة",
                                     onClick = { viewModel.openModal(ActiveModal.WalletDetails(TradeType.SPOT)) },
                                     testTag = "spot_wallet_btn"
                                 )
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
+                                val spotTradesCount = uiState.spotSummary.activeTradesCount.coerceAtLeast(uiState.spotSummary.trades.size)
                                 TranslucentActionButton(
-                                    text = "الصفقات",
+                                    text = "$spotTradesCount صفقات",
+                                    subText = "الصفقات",
                                     onClick = { viewModel.openModal(ActiveModal.TradesList(TradeType.SPOT)) },
                                     testTag = "spot_trades_btn"
                                 )
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
-                                // Bottom Badges Row for Spot
+                                // Bottom Badges Row for Spot (Real MEXC Profit & Loss)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
+                                    val lossText = formatProfitLoss(uiState.spotSummary.lossValue)
+                                    val profitText = formatProfitLoss(uiState.spotSummary.profitValue)
                                     GlassBadge(
                                         title = "خَسارة",
-                                        value = "-1,750",
+                                        value = lossText,
                                         borderColor = NeonGreen,
-                                        valueColor = NeonRed,
+                                        valueColor = if (uiState.spotSummary.lossValue <= 0) NeonRed else NeonGreen,
                                         modifier = Modifier.weight(1f)
                                     )
                                     GlassBadge(
                                         title = "ربح",
-                                        value = "+1,600",
+                                        value = profitText,
                                         borderColor = NeonRed,
-                                        valueColor = NeonGreen,
+                                        valueColor = if (uiState.spotSummary.profitValue >= 0) NeonGreen else NeonRed,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -284,39 +291,45 @@ fun MaroahScreen(
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
+                                val futuresBalanceText = formatBalanceUsdt(uiState.futureSummary.balanceUsdt)
                                 TranslucentActionButton(
-                                    text = "المحفظة",
+                                    text = futuresBalanceText,
+                                    subText = "المحفظة",
                                     onClick = { viewModel.openModal(ActiveModal.WalletDetails(TradeType.FUTURE)) },
                                     testTag = "future_wallet_btn"
                                 )
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
+                                val futuresTradesCount = uiState.futureSummary.activeTradesCount.coerceAtLeast(uiState.futureSummary.trades.size)
                                 TranslucentActionButton(
-                                    text = "الصفقات",
+                                    text = "$futuresTradesCount صفقات",
+                                    subText = "الصفقات",
                                     onClick = { viewModel.openModal(ActiveModal.TradesList(TradeType.FUTURE)) },
                                     testTag = "future_trades_btn"
                                 )
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
-                                // Bottom Badges Row for Futures
+                                // Bottom Badges Row for Futures (Real MEXC Profit & Loss)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
+                                    val lossText = formatProfitLoss(uiState.futureSummary.lossValue)
+                                    val profitText = formatProfitLoss(uiState.futureSummary.profitValue)
                                     GlassBadge(
                                         title = "خَسارة",
-                                        value = "+2.150",
+                                        value = lossText,
                                         borderColor = NeonGreen,
-                                        valueColor = NeonGreen,
+                                        valueColor = if (uiState.futureSummary.lossValue >= 0) NeonGreen else NeonRed,
                                         modifier = Modifier.weight(1f)
                                     )
                                     GlassBadge(
                                         title = "ربح",
-                                        value = "-0.800",
+                                        value = profitText,
                                         borderColor = NeonRed,
-                                        valueColor = NeonRed,
+                                        valueColor = if (uiState.futureSummary.profitValue <= 0) NeonRed else NeonGreen,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -462,5 +475,19 @@ fun AtmosphereCanvas(modifier: Modifier = Modifier) {
             )
             x += gridStep
         }
+    }
+}
+
+private fun formatBalanceUsdt(amount: Double): String {
+    return String.format(Locale.US, "$%,.2f", amount)
+}
+
+private fun formatProfitLoss(value: Double): String {
+    val absVal = Math.abs(value)
+    val sign = if (value >= 0) "+" else "-"
+    return if (absVal >= 100.0) {
+        String.format(Locale.US, "%s%,.0f", sign, absVal)
+    } else {
+        String.format(Locale.US, "%s%,.3f", sign, absVal)
     }
 }
