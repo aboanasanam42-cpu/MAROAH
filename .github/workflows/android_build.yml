@@ -66,9 +66,10 @@ jobs:
         run: npm install
 
       - name: Build Windows EXE
+        shell: bash
         run: |
           mkdir -p dist
-          npx --yes pkg@5.8.1 server.js --targets node20-win-x64 --output dist/MAROAH-Server.exe
+          npx --yes @yao-pkg/pkg@6.7.0 server.js --targets node20-win-x64 --output dist/MAROAH-Server.exe
           test -s dist/MAROAH-Server.exe
           ls -lh dist/MAROAH-Server.exe
 
