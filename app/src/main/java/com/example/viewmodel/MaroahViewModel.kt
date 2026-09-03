@@ -130,7 +130,8 @@ class MaroahViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true, statusNotification = "جاري الاتصال بسيرفر Railway السحابي...") }
             try {
-                val api = NetworkClient.getApiService(_uiState.value.cloudConfig.serverUrl)
+                val config = _uiState.value.cloudConfig
+                val api = NetworkClient.getApiService(config.serverUrl, config.sessionToken)
                 val (spotResp, futuresResp) = withContext(Dispatchers.IO) {
                     try {
                         val s = api.getSpotBalance()
@@ -209,18 +210,22 @@ class MaroahViewModel : ViewModel() {
             status = "FILLED"
         )
 
-        // Asynchronously notify Railway server of $1 trade execution
+        // Asynchronously call the dedicated endpoint on Railway server with session token
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val api = NetworkClient.getApiService(_uiState.value.cloudConfig.serverUrl)
-                api.executeTrade(
-                    TradeRequest(
-                        type = if (type == TradeType.SPOT) "SPOT" else "FUTURE",
-                        symbol = symbol,
-                        side = side.name,
-                        amountUsd = 1.0
-                    )
+                val config = _uiState.value.cloudConfig
+                val api = NetworkClient.getApiService(config.serverUrl, config.sessionToken)
+                val request = TradeRequest(
+                    type = if (type == TradeType.SPOT) "SPOT" else "FUTURE",
+                    symbol = symbol,
+                    side = side.name,
+                    amountUsd = 1.0
                 )
+                if (type == TradeType.SPOT) {
+                    api.executeSpotTrade(request)
+                } else {
+                    api.executeFuturesTrade(request)
+                }
             } catch (_: Exception) {
                 // Network handled gracefully
             }

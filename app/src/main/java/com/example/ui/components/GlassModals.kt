@@ -434,8 +434,7 @@ fun CloudSettingsModal(
     onDismiss: () -> Unit
 ) {
     var serverUrl by remember { mutableStateOf(currentConfig.serverUrl) }
-    var mexcApiKey by remember { mutableStateOf(currentConfig.mexcApiKey) }
-    var mexcSecretKey by remember { mutableStateOf(currentConfig.mexcSecretKey) }
+    var sessionToken by remember { mutableStateOf(currentConfig.sessionToken) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -505,15 +504,15 @@ fun CloudSettingsModal(
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
                             Text(
-                                text = "حالة الخادم المستقل (Railway):",
+                                text = "حالة الخادم السحابي المستقل (Railway):",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NeonCyan
                             )
                             Text(
-                                text = "• المنفذ المستهدف: 8080 (PORT)\n• مفاتيح API مخزنة وموقعة بأمان داخل السيرفر:\n  MEXC_APP_KEY, MEXC_APP_SECRET\n  MEXC_BLOCKBEAT_KEY, MEXC_BLOCKBEAT_SECRET",
+                                text = "• المنفذ المستهدف: 8080 (PORT)\n• لا يتم تخزين أي مفاتيح سرية في تطبيق الأندرويد.\n• الحساب الفرعي: aboanasanam42+sub1@gmail.com\n• المفاتيح مؤمنة سحابياً: MEXC_APP_KEY / SECRET و BLOCKBEAT",
                                 fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = Color.White.copy(alpha = 0.85f),
                                 lineHeight = 15.sp
                             )
                         }
@@ -522,7 +521,7 @@ fun CloudSettingsModal(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "مفتاح MEXC_APP_KEY (اختياري / احتياطي):",
+                        text = "رمز جلسة التحقق (x-session-token):",
                         fontSize = 12.sp,
                         color = Color.White.copy(alpha = 0.85f),
                         textAlign = TextAlign.End,
@@ -532,45 +531,18 @@ fun CloudSettingsModal(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     OutlinedTextField(
-                        value = mexcApiKey,
-                        onValueChange = { mexcApiKey = it },
+                        value = sessionToken,
+                        onValueChange = { sessionToken = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("mexc_api_key_input"),
+                            .testTag("session_token_input"),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeonCyan,
                             unfocusedBorderColor = Color(0x4400E5FF),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        placeholder = { Text("مخزن مسبقاً في Railway Dashboard", color = Color.Gray, fontSize = 12.sp) }
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "مفتاح MEXC_APP_SECRET (احتياطي):",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.85f),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    OutlinedTextField(
-                        value = mexcSecretKey,
-                        onValueChange = { mexcSecretKey = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("mexc_secret_key_input"),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = NeonCyan,
-                            unfocusedBorderColor = Color(0x4400E5FF),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
-                        placeholder = { Text("مخزن وموقع سحابياً بأمان", color = Color.Gray, fontSize = 12.sp) }
+                        placeholder = { Text("maroah-secure-subaccount-token", color = Color.Gray, fontSize = 12.sp) }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -580,8 +552,7 @@ fun CloudSettingsModal(
                             onSaveConfig(
                                 currentConfig.copy(
                                     serverUrl = serverUrl,
-                                    mexcApiKey = mexcApiKey,
-                                    mexcSecretKey = mexcSecretKey
+                                    sessionToken = sessionToken
                                 )
                             )
                             onDismiss()

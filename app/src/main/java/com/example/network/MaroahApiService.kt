@@ -72,14 +72,20 @@ interface MaroahApiService {
     @GET("api/health")
     suspend fun checkHealth(): HealthResponse
 
-    @GET("api/balance")
+    @GET("api/balance/spot")
     suspend fun getSpotBalance(): BalanceResponse
 
-    @GET("api/futures/balance")
+    @GET("api/balance/futures")
     suspend fun getFuturesBalance(): BalanceResponse
 
     @GET("api/trades")
     suspend fun getTrades(@Query("type") type: String? = null): TradesResponse
+
+    @POST("api/trade/spot")
+    suspend fun executeSpotTrade(@Body request: TradeRequest): TradeExecutionResponse
+
+    @POST("api/trade/futures")
+    suspend fun executeFuturesTrade(@Body request: TradeRequest): TradeExecutionResponse
 
     @POST("api/trade")
     suspend fun executeTrade(@Body request: TradeRequest): TradeExecutionResponse
@@ -87,6 +93,7 @@ interface MaroahApiService {
 
 object NetworkClient {
     private const val DEFAULT_RAILWAY_URL = "https://maroah-production-33c3.up.railway.app/"
+    private var currentSessionToken = "maroah-secure-subaccount-token"
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -96,6 +103,13 @@ object NetworkClient {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .writeTimeout(10, TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val original = chain.request()
+            val requestBuilder = original.newBuilder()
+                .header("x-session-token", currentSessionToken)
+                .header("Accept", "application/json")
+            chain.proceed(requestBuilder.build())
+        }
         .addInterceptor(HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         })
@@ -105,10 +119,14 @@ object NetworkClient {
     private var currentApi: MaroahApiService? = null
 
     @Synchronized
-    fun getApiService(baseUrl: String = DEFAULT_RAILWAY_URL): MaroahApiService {
+    fun getApiService(
+        baseUrl: String = DEFAULT_RAILWAY_URL,
+        sessionToken: String = currentSessionToken
+    ): MaroahApiService {
         val normalizedUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
-        if (currentApi == null || currentBaseUrl != normalizedUrl) {
+        if (currentApi == null || currentBaseUrl != normalizedUrl || currentSessionToken != sessionToken) {
             currentBaseUrl = normalizedUrl
+            currentSessionToken = sessionToken
             currentApi = Retrofit.Builder()
                 .baseUrl(normalizedUrl)
                 .client(okHttpClient)

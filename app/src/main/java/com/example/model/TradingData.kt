@@ -42,7 +42,6 @@ data class ColumnSummary(
 
 data class CloudConfig(
     val serverUrl: String = "https://maroah-production-33c3.up.railway.app",
-    val mexcApiKey: String = "",
-    val mexcSecretKey: String = "",
+    val sessionToken: String = "maroah-secure-subaccount-token",
     val isLiveCloudMode: Boolean = true
 )

@@ -91,8 +91,9 @@
   ```
 
 ### 2. جلب رصيد وأصول التداول الفوري (Spot Balance)
-- **المسار:** `GET /api/balance`
-- **الوصف:** يقوم السيرفر بتوقيع الطلب بـ `HMAC-SHA256` وجلب الأرصدة الحقيقية من MEXC API v3.
+- **المسار:** `GET /api/balance/spot` أو `GET /api/balance`
+- **الترويسات (Headers):** `x-session-token: maroah-secure-subaccount-token`
+- **الوصف:** يقوم السيرفر بتوقيع الطلب بـ `HMAC-SHA256` لحساب التداول والفرعي (`aboanasanam42+sub1@gmail.com`) وجلب الأرصدة الحقيقية من MEXC API v3.
 - **الاستجابة:**
   ```json
   {
@@ -110,11 +111,13 @@
   ```
 
 ### 3. جلب رصيد وأصول التداول الآجل (Futures Balance)
-- **المسار:** `GET /api/futures/balance`
+- **المسار:** `GET /api/balance/futures` أو `GET /api/futures/balance`
+- **الترويسات (Headers):** `x-session-token: maroah-secure-subaccount-token`
 - **الوصف:** يجلب رصيد عقود MEXC الآجلة وهامش الـ USDT.
 
-### 4. تنفيذ صفقة بقيمة 1 دولار (Execute Trade)
-- **المسار:** `POST /api/trade`
+### 4. تنفيذ صفقات بقيمة 1 دولار (Execute Trade)
+- **المسارات:** `POST /api/trade/spot` (للفوري) و `POST /api/trade/futures` (للآجل)
+- **الترويسات (Headers):** `x-session-token: maroah-secure-subaccount-token`
 - **البيانات المرسلة (Body):**
   ```json
   {

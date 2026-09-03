@@ -51,7 +51,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // 2. Spot Balance Endpoint (signed server-side)
-app.get('/api/balance', async (req, res) => {
+const handleSpotBalance = async (req, res) => {
   try {
     if (!MEXC_APP_KEY || !MEXC_APP_SECRET) {
       // Fallback with live structure if environment variables are not yet populated
@@ -121,10 +121,13 @@ app.get('/api/balance', async (req, res) => {
       warning: error.message
     });
   }
-});
+};
+
+app.get('/api/balance', handleSpotBalance);
+app.get('/api/balance/spot', handleSpotBalance);
 
 // 3. Futures / Agile Balance Endpoint
-app.get('/api/futures/balance', async (req, res) => {
+const handleFuturesBalance = async (req, res) => {
   try {
     if (!MEXC_APP_KEY || !MEXC_APP_SECRET) {
       return res.json({
@@ -173,15 +176,18 @@ app.get('/api/futures/balance', async (req, res) => {
       warning: error.message
     });
   }
-});
+};
+
+app.get('/api/futures/balance', handleFuturesBalance);
+app.get('/api/balance/futures', handleFuturesBalance);
 
 // 4. Trade Execution ($1 Fixed Amount on Spot or Futures)
-app.post('/api/trade', async (req, res) => {
+const executeTradeOrder = (req, res, overrideType) => {
   try {
     const { type, symbol, side, amountUsd = 1.0 } = req.body;
-    const cleanSymbol = symbol || (type === 'SPOT' ? 'BTC/USDT' : 'BTC-PERP');
+    const finalType = overrideType || type || 'SPOT';
+    const cleanSymbol = symbol || (finalType === 'SPOT' ? 'BTC/USDT' : 'BTC-PERP');
     const cleanSide = side || 'BUY';
-    const cleanType = type || 'SPOT';
 
     const entryPrices = {
       'BTC/USDT': 64500.0,
@@ -198,7 +204,7 @@ app.post('/api/trade', async (req, res) => {
     const newTrade = {
       id: `ord_${Date.now().toString().slice(-6)}`,
       symbol: cleanSymbol,
-      type: cleanType,
+      type: finalType,
       side: cleanSide,
       amountUsd: 1.0, // Fixed $1 USD as requested
       entryPrice: currentPrice,
@@ -214,13 +220,17 @@ app.post('/api/trade', async (req, res) => {
 
     res.json({
       success: true,
-      message: `تم تنفيذ صفقة ${cleanType === 'SPOT' ? 'الفوري' : 'الأجل'} بقيمة 1 دولار بنجاح عبر سيرفر Railway`,
+      message: `تم تنفيذ صفقة ${finalType === 'SPOT' ? 'الفوري' : 'الأجل'} بقيمة 1 دولار بنجاح عبر سيرفر Railway`,
       order: newTrade
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
-});
+};
+
+app.post('/api/trade', (req, res) => executeTradeOrder(req, res));
+app.post('/api/trade/spot', (req, res) => executeTradeOrder(req, res, 'SPOT'));
+app.post('/api/trade/futures', (req, res) => executeTradeOrder(req, res, 'FUTURE'));
 
 // 5. Recent Trades Endpoint
 app.get('/api/trades', (req, res) => {
