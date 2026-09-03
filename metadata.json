@@ -1,0 +1,6 @@
+{
+  "name": "MAROAH",
+  "description": "تطبيق التداول السحابي MAROAH بواجهة زجاجية ثلاثية الأبعاد (Glassmorphism) لحسابات Spot و Futures في منصة MEXC",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
