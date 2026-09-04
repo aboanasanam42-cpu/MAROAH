@@ -370,6 +370,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Backward-compatible individual endpoints
+app.get('/api/account', (req, res) => res.redirect('/api/balance/spot'));
 app.get('/api/balance/spot', (req, res) => {
   res.json({
     source: 'railway_live_daemon',
