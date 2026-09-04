@@ -59,17 +59,20 @@ data class MaroahUiState(
     val activeModal: ActiveModal = ActiveModal.None,
     val isSyncing: Boolean = false,
     val isCloudConnected: Boolean = true,
-    val cloudStatus: String = "اتصال سحابي 100% • MEXC Live",
+    val cloudStatus: String = "سحابة Railway متصلة 24/7 • MEXC Daemon",
     val cloudConfig: CloudConfig = CloudConfig(
-        serverUrl = "https://maroah-production-33c3.up.railway.app",
-        sessionToken = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA=",
+        serverUrl = NetworkClient.PRIMARY_RAILWAY_URL,
+        fallbackUrl = NetworkClient.FALLBACK_VERCEL_URL,
+        sessionToken = NetworkClient.DEFAULT_SESSION_TOKEN,
         isLiveCloudMode = true
     ),
+    val activeServerEndpoint: String = "Railway Primary",
     val statusNotification: String? = null,
     val unifiedUtcTime: String = "",
     val currentBtcPrice: Double = 80890.65,
     val high24h: Double = 82000.0,
-    val low24h: Double = 77100.0
+    val low24h: Double = 77100.0,
+    val quantStrategyName: String = "Dynamic SL: 1.0% | TP: 2.5% (BTC/USDT)"
 )
 
 class MaroahViewModel : ViewModel() {
@@ -97,8 +100,7 @@ class MaroahViewModel : ViewModel() {
         }
     }
 
-    // Continuous 100% Real-Time Cloud Telemetry Reader
-    // Polls the live Railway server for Wallet Balances, Profits, Trades, and MEXC BTC Price
+    // Continuous 100% Real-Time Cloud Telemetry Reader with Failover between Railway & Vercel
     private fun startContinuousCloudTelemetry() {
         viewModelScope.launch {
             // Immediate first read
@@ -119,127 +121,136 @@ class MaroahViewModel : ViewModel() {
 
         try {
             val config = _uiState.value.cloudConfig
-            val api = NetworkClient.getApiService(config.serverUrl, config.sessionToken)
 
             withContext(Dispatchers.IO) {
-                // 1. Fast Polling from Headless Daemon /api/bot-status
-                val botStatusResp = try {
-                    api.getBotStatus()
-                } catch (_: Exception) {
-                    null
-                }
+                NetworkClient.executeWithFailover(
+                    primaryUrl = config.serverUrl,
+                    fallbackUrl = config.fallbackUrl,
+                    sessionToken = config.sessionToken
+                ) { api, usedUrl ->
+                    val isFallbackUsed = usedUrl.contains("vercel", ignoreCase = true)
+                    val endpointLabel = if (isFallbackUsed) "Vercel Cloud Fallback" else "Railway Cloud Primary"
 
-                // 2. Fetch Spot Balance & Assets
-                val spotBalance = try {
-                    api.getSpotBalance()
-                } catch (_: Exception) {
-                    null
-                }
+                    // 1. Fast Polling from Headless Daemon /api/bot-status
+                    val botStatusResp = try {
+                        api.getBotStatus()
+                    } catch (_: Exception) {
+                        null
+                    }
 
-                // 3. Fetch Futures Balance & Assets
-                val futuresBalance = try {
-                    api.getFuturesBalance()
-                } catch (_: Exception) {
-                    null
-                }
+                    // 2. Fetch Spot Balance & Assets
+                    val spotBalance = try {
+                        api.getSpotBalance()
+                    } catch (_: Exception) {
+                        null
+                    }
 
-                // 4. Fetch real Trades list
-                val tradesResp = try {
-                    api.getTrades()
-                } catch (_: Exception) {
-                    null
-                }
+                    // 3. Fetch Futures Balance & Assets
+                    val futuresBalance = try {
+                        api.getFuturesBalance()
+                    } catch (_: Exception) {
+                        null
+                    }
 
-                withContext(Dispatchers.Main) {
-                    _uiState.update { current ->
-                        val botData = botStatusResp?.data
-                        val btcPrice = botData?.btcPrice?.takeIf { it > 1000.0 }
-                            ?: current.currentBtcPrice
+                    // 4. Fetch real Trades list
+                    val tradesResp = try {
+                        api.getTrades()
+                    } catch (_: Exception) {
+                        null
+                    }
 
-                        // Parse Spot assets & totals (Prioritize fast Daemon botData)
-                        val spotBalanceVal = botData?.spot?.balance?.takeIf { it > 0 }
-                            ?: spotBalance?.balanceUsdt?.takeIf { it > 0 }
-                            ?: current.spotSummary.balanceUsdt
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { current ->
+                            val botData = botStatusResp?.data
+                            val btcPrice = botData?.btcPrice?.takeIf { it > 1000.0 }
+                                ?: current.currentBtcPrice
 
-                        val spotProfitVal = botData?.spot?.profit
-                            ?: spotBalance?.profitValue
-                            ?: current.spotSummary.profitValue
+                            // Parse Spot assets & totals (Prioritize fast Daemon botData)
+                            val spotBalanceVal = botData?.spot?.balance?.takeIf { it > 0 }
+                                ?: spotBalance?.balanceUsdt?.takeIf { it > 0 }
+                                ?: current.spotSummary.balanceUsdt
 
-                        val spotLossVal = botData?.spot?.loss
-                            ?: spotBalance?.lossValue
-                            ?: current.spotSummary.lossValue
+                            val spotProfitVal = botData?.spot?.profit
+                                ?: spotBalance?.profitValue
+                                ?: current.spotSummary.profitValue
 
-                        val spotAssets = spotBalance?.assets?.map {
-                            WalletAsset(it.coin, it.freeAmount, it.lockedAmount, it.usdtValue)
-                        }?.takeIf { it.isNotEmpty() } ?: listOf(
-                            WalletAsset("USDT", spotBalanceVal, 0.0, spotBalanceVal),
-                            WalletAsset("BTC", 0.0, 0.0, 0.0)
-                        )
+                            val spotLossVal = botData?.spot?.loss
+                                ?: spotBalance?.lossValue
+                                ?: current.spotSummary.lossValue
 
-                        // Parse Futures assets & totals (Prioritize fast Daemon botData)
-                        val futuresBalanceVal = botData?.future?.balance?.takeIf { it > 0 }
-                            ?: futuresBalance?.balanceUsdt?.takeIf { it > 0 }
-                            ?: current.futureSummary.balanceUsdt
-
-                        val futuresProfitVal = botData?.future?.profit
-                            ?: futuresBalance?.profitValue
-                            ?: current.futureSummary.profitValue
-
-                        val futuresLossVal = botData?.future?.loss
-                            ?: futuresBalance?.lossValue
-                            ?: current.futureSummary.lossValue
-
-                        val futuresAssets = futuresBalance?.assets?.map {
-                            WalletAsset(it.coin, it.freeAmount, it.lockedAmount, it.usdtValue)
-                        }?.takeIf { it.isNotEmpty() } ?: listOf(
-                            WalletAsset("USDT Futures Margin (BTC-PERP)", futuresBalanceVal, 0.0, futuresBalanceVal)
-                        )
-
-                        // Parse real trade orders from cloud
-                        val allTrades = tradesResp?.trades?.map { dto ->
-                            TradeOrder(
-                                id = dto.id,
-                                symbol = dto.symbol,
-                                type = if (dto.type == "SPOT") TradeType.SPOT else TradeType.FUTURE,
-                                side = if (dto.side == "BUY") OrderSide.BUY else OrderSide.SELL,
-                                amountUsd = dto.amountUsd.takeIf { it > 0 } ?: 1.0,
-                                entryPrice = dto.entryPrice,
-                                currentPrice = if (dto.currentPrice > 0) dto.currentPrice else btcPrice,
-                                pnl = dto.pnl,
-                                pnlPercent = dto.pnlPercent,
-                                timestamp = dto.timestamp,
-                                status = dto.status,
-                                strategy = dto.strategy ?: "Daemon 24/7 Automated Strategy"
+                            val spotAssets = spotBalance?.assets?.map {
+                                WalletAsset(it.coin, it.freeAmount, it.lockedAmount, it.usdtValue)
+                            }?.takeIf { it.isNotEmpty() } ?: listOf(
+                                WalletAsset("USDT", spotBalanceVal, 0.0, spotBalanceVal),
+                                WalletAsset("BTC", 0.0, 0.0, 0.0)
                             )
-                        } ?: emptyList()
 
-                        val spotTrades = allTrades.filter { it.type == TradeType.SPOT }.ifEmpty { current.spotSummary.trades }
-                        val futuresTrades = allTrades.filter { it.type == TradeType.FUTURE }.ifEmpty { current.futureSummary.trades }
+                            // Parse Futures assets & totals (Prioritize fast Daemon botData)
+                            val futuresBalanceVal = botData?.future?.balance?.takeIf { it > 0 }
+                                ?: futuresBalance?.balanceUsdt?.takeIf { it > 0 }
+                                ?: current.futureSummary.balanceUsdt
 
-                        val isConnected = botStatusResp != null || spotBalance != null || futuresBalance != null
+                            val futuresProfitVal = botData?.future?.profit
+                                ?: futuresBalance?.profitValue
+                                ?: current.futureSummary.profitValue
 
-                        current.copy(
-                            isSyncing = false,
-                            isCloudConnected = isConnected,
-                            cloudStatus = if (isConnected) "سحابة Railway متصلة 24/7 • MEXC Daemon" else "جاري محاولة الاتصال بـ Railway...",
-                            currentBtcPrice = btcPrice,
-                            spotSummary = current.spotSummary.copy(
-                                balanceUsdt = spotBalanceVal,
-                                profitValue = spotProfitVal,
-                                lossValue = spotLossVal,
-                                activeTradesCount = botData?.spot?.openOrdersCount?.takeIf { it > 0 } ?: spotTrades.size,
-                                assets = spotAssets,
-                                trades = spotTrades
-                            ),
-                            futureSummary = current.futureSummary.copy(
-                                balanceUsdt = futuresBalanceVal,
-                                profitValue = futuresProfitVal,
-                                lossValue = futuresLossVal,
-                                activeTradesCount = botData?.future?.openPositionsCount?.takeIf { it > 0 } ?: futuresTrades.size,
-                                assets = futuresAssets,
-                                trades = futuresTrades
+                            val futuresLossVal = botData?.future?.loss
+                                ?: futuresBalance?.lossValue
+                                ?: current.futureSummary.lossValue
+
+                            val futuresAssets = futuresBalance?.assets?.map {
+                                WalletAsset(it.coin, it.freeAmount, it.lockedAmount, it.usdtValue)
+                            }?.takeIf { it.isNotEmpty() } ?: listOf(
+                                WalletAsset("USDT Futures Margin (BTC-PERP)", futuresBalanceVal, 0.0, futuresBalanceVal)
                             )
-                        )
+
+                            // Parse real trade orders from cloud
+                            val allTrades = tradesResp?.trades?.map { dto ->
+                                TradeOrder(
+                                    id = dto.id,
+                                    symbol = dto.symbol,
+                                    type = if (dto.type == "SPOT") TradeType.SPOT else TradeType.FUTURE,
+                                    side = if (dto.side == "BUY") OrderSide.BUY else OrderSide.SELL,
+                                    amountUsd = dto.amountUsd.takeIf { it > 0 } ?: 1.0,
+                                    entryPrice = dto.entryPrice,
+                                    currentPrice = if (dto.currentPrice > 0) dto.currentPrice else btcPrice,
+                                    pnl = dto.pnl,
+                                    pnlPercent = dto.pnlPercent,
+                                    timestamp = dto.timestamp,
+                                    status = dto.status,
+                                    strategy = dto.strategy ?: "Maroah Autonomous Quant Daemon"
+                                )
+                            } ?: emptyList()
+
+                            val spotTrades = allTrades.filter { it.type == TradeType.SPOT }.ifEmpty { current.spotSummary.trades }
+                            val futuresTrades = allTrades.filter { it.type == TradeType.FUTURE }.ifEmpty { current.futureSummary.trades }
+
+                            val isConnected = botStatusResp != null || spotBalance != null || futuresBalance != null
+
+                            current.copy(
+                                isSyncing = false,
+                                isCloudConnected = isConnected,
+                                activeServerEndpoint = endpointLabel,
+                                cloudStatus = if (isConnected) "سحابة $endpointLabel متصلة 24/7 • MEXC" else "جاري محاولة الاتصال بالسحابة...",
+                                currentBtcPrice = btcPrice,
+                                spotSummary = current.spotSummary.copy(
+                                    balanceUsdt = spotBalanceVal,
+                                    profitValue = spotProfitVal,
+                                    lossValue = spotLossVal,
+                                    activeTradesCount = botData?.spot?.openOrdersCount?.takeIf { it > 0 } ?: spotTrades.size,
+                                    assets = spotAssets,
+                                    trades = spotTrades
+                                ),
+                                futureSummary = current.futureSummary.copy(
+                                    balanceUsdt = futuresBalanceVal,
+                                    profitValue = futuresProfitVal,
+                                    lossValue = futuresLossVal,
+                                    activeTradesCount = botData?.future?.openPositionsCount?.takeIf { it > 0 } ?: futuresTrades.size,
+                                    assets = futuresAssets,
+                                    trades = futuresTrades
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -248,7 +259,7 @@ class MaroahViewModel : ViewModel() {
                 it.copy(
                     isSyncing = false,
                     isCloudConnected = false,
-                    cloudStatus = "جاري إعادة الاتصال بسيرفر Railway..."
+                    cloudStatus = "جاري إعادة الاتصال بسيرفر Railway / Vercel..."
                 )
             }
         }
@@ -267,7 +278,7 @@ class MaroahViewModel : ViewModel() {
             _uiState.update {
                 it.copy(
                     isSyncing = true,
-                    statusNotification = "جاري القراءة الفورية المباشرة من منصة MEXC وسيرفر Railway..."
+                    statusNotification = "جاري القراءة الفورية المباشرة من منصة MEXC والسحابة..."
                 )
             }
             fetchCloudTelemetry(showLoadingIndicator = true)
@@ -283,7 +294,7 @@ class MaroahViewModel : ViewModel() {
         }
     }
 
-    // Direct Cloud Trade Order Execution ($1 Fixed on BTC Only via Railway)
+    // Direct Cloud Trade Order Execution ($1 Fixed on BTC Only via Railway/Vercel)
     fun placeOneDollarTrade(type: TradeType, symbol: String, side: OrderSide) {
         val btcSymbol = if (type == TradeType.SPOT) "BTC/USDT" else "BTC-PERP"
 
@@ -291,13 +302,12 @@ class MaroahViewModel : ViewModel() {
             _uiState.update {
                 it.copy(
                     isSyncing = true,
-                    statusNotification = "إرسال أمر صفقة (1$ $btcSymbol) إلى سيرفر Railway..."
+                    statusNotification = "إرسال أمر صفقة (1$ $btcSymbol) إلى السحابة المستقلة..."
                 )
             }
 
             try {
                 val config = _uiState.value.cloudConfig
-                val api = NetworkClient.getApiService(config.serverUrl, config.sessionToken)
                 val request = TradeRequest(
                     type = if (type == TradeType.SPOT) "SPOT" else "FUTURE",
                     symbol = btcSymbol,
@@ -307,7 +317,13 @@ class MaroahViewModel : ViewModel() {
                 )
 
                 val response = withContext(Dispatchers.IO) {
-                    api.placeOrder(request)
+                    NetworkClient.executeWithFailover(
+                        primaryUrl = config.serverUrl,
+                        fallbackUrl = config.fallbackUrl,
+                        sessionToken = config.sessionToken
+                    ) { api, _ ->
+                        api.placeOrder(request)
+                    }
                 }
 
                 if (response.success) {
@@ -347,7 +363,7 @@ class MaroahViewModel : ViewModel() {
         _uiState.update {
             it.copy(
                 cloudConfig = config,
-                cloudStatus = "تم توجيه الاتصال إلى Railway: ${config.serverUrl}",
+                cloudStatus = "تم توجيه الاتصال إلى: ${config.serverUrl}",
                 statusNotification = "تم حفظ إعدادات السيرفر السحابي والرمز بنجاح"
             )
         }

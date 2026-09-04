@@ -42,7 +42,8 @@ data class ColumnSummary(
 )
 
 data class CloudConfig(
-    val serverUrl: String = "https://maroah-production-33c3.up.railway.app",
+    val serverUrl: String = "https://maroah-production.up.railway.app",
+    val fallbackUrl: String = "https://maroah.vercel.app",
     val sessionToken: String = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA=",
     val isLiveCloudMode: Boolean = true
 )

@@ -445,6 +445,7 @@ fun CloudSettingsModal(
     onDismiss: () -> Unit
 ) {
     var serverUrl by remember { mutableStateOf(currentConfig.serverUrl) }
+    var fallbackUrl by remember { mutableStateOf(currentConfig.fallbackUrl) }
     var sessionToken by remember { mutableStateOf(currentConfig.sessionToken) }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -531,6 +532,33 @@ fun CloudSettingsModal(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
+                        text = "رابط السيرفر الاحتياطي Vercel (Fallback):",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    OutlinedTextField(
+                        value = fallbackUrl,
+                        onValueChange = { fallbackUrl = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("fallback_url_input"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = Color(0x4400E5FF),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
                         text = "رمز الجلسة المشفر (Session Token):",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -562,6 +590,7 @@ fun CloudSettingsModal(
                             onSaveConfig(
                                 currentConfig.copy(
                                     serverUrl = serverUrl.trim(),
+                                    fallbackUrl = fallbackUrl.trim(),
                                     sessionToken = sessionToken.trim()
                                 )
                             )
