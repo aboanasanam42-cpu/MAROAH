@@ -1,21 +1,14 @@
 package com.example.model
 
-enum class TradeType {
-    SPOT,
-    FUTURE
-}
-
-enum class OrderSide {
-    BUY,
-    SELL
-}
+enum class TradeType { SPOT, FUTURE }
+enum class OrderSide { BUY, SELL }
 
 data class TradeOrder(
     val id: String,
-    val symbol: String = "BTC/USDT", // Strictly Bitcoin vs USDT
+    val symbol: String = "BTC/USDT",
     val type: TradeType,
     val side: OrderSide,
-    val amountUsd: Double = 1.0, // Fixed $1 USD
+    val amountUsd: Double = 1.0,
     val entryPrice: Double,
     val currentPrice: Double,
     val pnl: Double,
@@ -25,12 +18,7 @@ data class TradeOrder(
     val strategy: String = "BTC Range Profit Capture"
 )
 
-data class WalletAsset(
-    val coin: String,
-    val freeAmount: Double,
-    val lockedAmount: Double,
-    val usdtValue: Double
-)
+data class WalletAsset(val coin: String, val freeAmount: Double, val lockedAmount: Double, val usdtValue: Double)
 
 data class ColumnSummary(
     val balanceUsdt: Double,
@@ -44,6 +32,7 @@ data class ColumnSummary(
 data class CloudConfig(
     val serverUrl: String = "https://maroah-production.up.railway.app",
     val fallbackUrl: String = "https://maroah.vercel.app",
-    val sessionToken: String = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA=",
+    // Never embed an authentication secret in the APK. Server-side auth is authoritative.
+    val sessionToken: String = "",
     val isLiveCloudMode: Boolean = true
 )
