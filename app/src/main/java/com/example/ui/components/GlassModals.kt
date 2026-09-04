@@ -1,9 +1,16 @@
 package com.example.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,25 +27,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,6 +65,8 @@ import com.example.model.ColumnSummary
 import com.example.model.OrderSide
 import com.example.model.TradeOrder
 import com.example.model.TradeType
+import com.example.ui.theme.GlassBorderCyan
+import com.example.ui.theme.GlassPanelBg
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.NeonGreen
 import com.example.ui.theme.NeonMagenta
@@ -68,7 +74,7 @@ import com.example.ui.theme.NeonRed
 import java.util.Locale
 
 /**
- * Wallet Details Dialog (Spot or Futures / Agile).
+ * Wallet Details Dialog (Spot or Futures / Agile) showing live MEXC reading.
  */
 @Composable
 fun WalletDetailsModal(
@@ -78,23 +84,23 @@ fun WalletDetailsModal(
     onRefresh: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val title = if (type == TradeType.SPOT) "محفظة الفوري (Spot Wallet)" else "محفظة الأجل (Futures Agile Wallet)"
+    val title = if (type == TradeType.SPOT) "محفظة الفوري (MEXC Spot Wallet)" else "محفظة الأجل (MEXC Futures Margin)"
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(8.dp),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xF80B1424)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xF8091322)),
             border = BorderStroke(1.5.dp, Color(0x6600E5FF))
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(20.dp)
             ) {
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -105,7 +111,7 @@ fun WalletDetailsModal(
                     }
                     Text(
                         text = title,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = NeonCyan,
                         textAlign = TextAlign.End
@@ -135,8 +141,13 @@ fun WalletDetailsModal(
                             color = Color.White.copy(alpha = 0.7f)
                         )
                         Spacer(modifier = Modifier.height(6.dp))
+                        val formattedBalance = if (type == TradeType.SPOT) {
+                            String.format(Locale.US, "$%.2f USDT", summary.balanceUsdt)
+                        } else {
+                            String.format(Locale.US, "$%.3f USDT", summary.balanceUsdt)
+                        }
                         Text(
-                            text = String.format(Locale.US, "$%,.2f USDT", summary.balanceUsdt),
+                            text = formattedBalance,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
@@ -148,8 +159,8 @@ fun WalletDetailsModal(
 
                 // Breakdown of assets
                 Text(
-                    text = "الأصول المتوفرة في حساب MEXC:",
-                    fontSize = 14.sp,
+                    text = "الأصول المتوفرة في حساب MEXC (BTC/USDT):",
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White.copy(alpha = 0.9f),
                     modifier = Modifier.fillMaxWidth(),
@@ -170,7 +181,7 @@ fun WalletDetailsModal(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = String.format(Locale.US, "$%,.2f", asset.usdtValue),
+                            text = String.format(Locale.US, "$%,.3f", asset.usdtValue),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = NeonGreen
@@ -178,12 +189,12 @@ fun WalletDetailsModal(
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = asset.coin,
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
                             Text(
-                                text = String.format(Locale.US, "المتاح: %.4f", asset.freeAmount),
+                                text = String.format(Locale.US, "المتاح: %.6f", asset.freeAmount),
                                 fontSize = 11.sp,
                                 color = Color.White.copy(alpha = 0.6f)
                             )
@@ -239,7 +250,7 @@ fun WalletDetailsModal(
 }
 
 /**
- * Trades Dialog (Spot or Futures / Agile) showing $1 trade size.
+ * Trades Dialog (Spot or Futures / Agile) showing $1 trade size on BTC only.
  */
 @Composable
 fun TradesListModal(
@@ -248,8 +259,8 @@ fun TradesListModal(
     onPlaceNewTrade: (String, OrderSide) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val title = if (type == TradeType.SPOT) "صفقات الفوري (Spot $1 Trades)" else "صفقات الأجل (Futures Agile $1 Trades)"
-    var selectedSymbol by remember { mutableStateOf(if (type == TradeType.SPOT) "BTC/USDT" else "BTC-PERP") }
+    val title = if (type == TradeType.SPOT) "صفقات الفوري (BTC/USDT - 1$)" else "صفقات الأجل (BTC-PERP - 1$)"
+    val btcSymbol = if (type == TradeType.SPOT) "BTC/USDT" else "BTC-PERP"
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -276,12 +287,12 @@ fun TradesListModal(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = title,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = NeonCyan
                         )
                         Text(
-                            text = "حجم الصفقة الواحدة: 1 دولار أمريكي (Fixed 1$)",
+                            text = "حجم الصفقة: 1 دولار | زوج: $btcSymbol",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = NeonGreen
@@ -303,7 +314,7 @@ fun TradesListModal(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = { onPlaceNewTrade(selectedSymbol, OrderSide.BUY) },
+                        onClick = { onPlaceNewTrade(btcSymbol, OrderSide.BUY) },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
@@ -311,13 +322,13 @@ fun TradesListModal(
                             .height(40.dp)
                             .testTag("place_buy_trade_button")
                     ) {
-                        Text("شراء (1$)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("شراء (1$ BTC)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Button(
-                        onClick = { onPlaceNewTrade(selectedSymbol, OrderSide.SELL) },
+                        onClick = { onPlaceNewTrade(btcSymbol, OrderSide.SELL) },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonRed),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
@@ -325,14 +336,14 @@ fun TradesListModal(
                             .height(40.dp)
                             .testTag("place_sell_trade_button")
                     ) {
-                        Text("بيع (1$)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("بيع (1$ BTC)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "سجل الصفقات المنفذة الأخيرة:",
+                    text = "سجل الصفقات المنفذة (الربح وتتبع الأسعار):",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.85f),
@@ -384,7 +395,7 @@ fun TradeItemRow(trade: TradeOrder) {
                 color = pnlColor
             )
             Text(
-                text = "قيمة: $1.00",
+                text = "حجم: 1.00$",
                 fontSize = 10.sp,
                 color = Color.White.copy(alpha = 0.6f)
             )
@@ -393,7 +404,7 @@ fun TradeItemRow(trade: TradeOrder) {
         // Price info
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = String.format(Locale.US, "$%,.2f", trade.currentPrice),
+                text = String.format(Locale.US, "$%,.1f", trade.currentPrice),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -406,7 +417,7 @@ fun TradeItemRow(trade: TradeOrder) {
             )
         }
 
-        // Symbol & Side
+        // Symbol & Strategy
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = trade.symbol,
@@ -415,7 +426,7 @@ fun TradeItemRow(trade: TradeOrder) {
                 color = Color.White
             )
             Text(
-                text = "$sideText (${trade.status})",
+                text = "$sideText (${trade.strategy})",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = sideColor
@@ -448,7 +459,7 @@ fun CloudSettingsModal(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp)
+                    .padding(20.dp)
             ) {
                 item {
                     Row(
@@ -460,24 +471,46 @@ fun CloudSettingsModal(
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                         }
                         Text(
-                            text = "إعدادات سيرفر Railway السحابي",
-                            fontSize = 17.sp,
+                            text = "إعدادات الربط السحابي ومفاتيح MEXC",
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NeonCyan
+                            color = NeonCyan,
+                            textAlign = TextAlign.End
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Notice Card
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0x2200E5FF))
+                            .border(BorderStroke(1.dp, Color(0x3300E5FF)), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Security, contentDescription = "Security", tint = NeonCyan)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "مفاتيح MEXC مُؤمَّنة وتعمل بتوقيت موحد مع السيرفر السحابي لحماية الصفقات وجني الأرباح.",
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "رابط السيرفر العام (Public Base URL):",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.85f),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth()
+                        text = "رابط سيرفر Railway السحابي المستقل:",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     OutlinedTextField(
                         value = serverUrl,
@@ -485,50 +518,26 @@ fun CloudSettingsModal(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("server_url_input"),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeonCyan,
                             unfocusedBorderColor = Color(0x4400E5FF),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        placeholder = { Text("https://maroah-production-33c3.up.railway.app", color = Color.Gray, fontSize = 12.sp) }
+                        singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Server Info Badge
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0x3300E5FF)),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Text(
-                                text = "حالة الخادم السحابي المستقل (Railway):",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NeonCyan
-                            )
-                            Text(
-                                text = "• المنفذ المستهدف: 8080 (PORT)\n• لا يتم تخزين أي مفاتيح سرية في تطبيق الأندرويد.\n• الحساب الفرعي: aboanasanam42+sub1@gmail.com\n• المفاتيح مؤمنة سحابياً: MEXC_APP_KEY / SECRET و BLOCKBEAT",
-                                fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.85f),
-                                lineHeight = 15.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = "رمز جلسة التحقق (x-session-token):",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.85f),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth()
+                        text = "رمز الجلسة المشفر (Session Token):",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     OutlinedTextField(
                         value = sessionToken,
@@ -536,35 +545,43 @@ fun CloudSettingsModal(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("session_token_input"),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NeonCyan,
                             unfocusedBorderColor = Color(0x4400E5FF),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         ),
-                        placeholder = { Text("maroah-secure-subaccount-token", color = Color.Gray, fontSize = 12.sp) }
+                        singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     Button(
                         onClick = {
                             onSaveConfig(
                                 currentConfig.copy(
-                                    serverUrl = serverUrl,
-                                    sessionToken = sessionToken
+                                    serverUrl = serverUrl.trim(),
+                                    sessionToken = sessionToken.trim()
                                 )
                             )
                             onDismiss()
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("save_settings_button"),
+                            .height(50.dp)
+                            .testTag("save_cloud_config_btn"),
                         colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("حفظ وتوجيه الاتصال إلى Railway", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Save, contentDescription = "Save", tint = Color.Black)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "حفظ ومزامنة فورية",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
                     }
                 }
             }

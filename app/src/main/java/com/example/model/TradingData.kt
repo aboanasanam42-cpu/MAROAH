@@ -12,16 +12,17 @@ enum class OrderSide {
 
 data class TradeOrder(
     val id: String,
-    val symbol: String,
+    val symbol: String = "BTC/USDT", // Strictly Bitcoin vs USDT
     val type: TradeType,
     val side: OrderSide,
-    val amountUsd: Double = 1.0, // Fixed $1 USD as requested
+    val amountUsd: Double = 1.0, // Fixed $1 USD
     val entryPrice: Double,
     val currentPrice: Double,
     val pnl: Double,
     val pnlPercent: Double,
     val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "FILLED"
+    val status: String = "FILLED",
+    val strategy: String = "BTC Range Profit Capture"
 )
 
 data class WalletAsset(

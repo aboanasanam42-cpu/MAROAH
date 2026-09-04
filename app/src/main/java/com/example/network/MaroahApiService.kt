@@ -1,8 +1,5 @@
 package com.example.network
 
-import com.example.model.OrderSide
-import com.example.model.TradeType
-import com.example.model.WalletAsset
 import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -18,7 +15,9 @@ import java.util.concurrent.TimeUnit
 
 data class HealthResponse(
     val status: String = "",
-    val server: String = ""
+    val server: String = "",
+    val serverTimeMillis: Long = 0L,
+    val serverTimeIso: String = ""
 )
 
 data class AssetDto(
@@ -30,6 +29,8 @@ data class AssetDto(
 
 data class BalanceResponse(
     val source: String? = null,
+    val serverTimeMillis: Long = 0L,
+    val serverTimeIso: String = "",
     val balanceUsdt: Double = 0.0,
     val profitValue: Double = 0.0,
     val lossValue: Double = 0.0,
@@ -39,7 +40,7 @@ data class BalanceResponse(
 
 data class TradeItemDto(
     val id: String = "",
-    val symbol: String = "",
+    val symbol: String = "BTC/USDT",
     val type: String = "SPOT",
     val side: String = "BUY",
     val amountUsd: Double = 1.0,
@@ -48,10 +49,12 @@ data class TradeItemDto(
     val pnl: Double = 0.0,
     val pnlPercent: Double = 0.0,
     val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "FILLED"
+    val status: String = "FILLED",
+    val strategy: String? = null
 )
 
 data class TradesResponse(
+    val serverTimeMillis: Long = 0L,
     val trades: List<TradeItemDto> = emptyList()
 )
 
@@ -66,6 +69,8 @@ data class TradeExecutionResponse(
     val success: Boolean = false,
     val message: String = "",
     val order: TradeItemDto? = null,
+    val serverTimeMillis: Long = 0L,
+    val serverTimeIso: String = "",
     val activeTradesCount: Int? = null,
     val profitValue: Double? = null,
     val lossValue: Double? = null

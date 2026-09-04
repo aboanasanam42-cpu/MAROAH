@@ -30,8 +30,13 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          test -n "$KEYSTORE_BASE64"
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/my-upload-key.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding KEYSTORE_BASE64 from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/my-upload-key.jks"
+          elif [ -f "$GITHUB_WORKSPACE/maroah.keystore" ]; then
+            echo "Using committed maroah.keystore from repository..."
+            cp "$GITHUB_WORKSPACE/maroah.keystore" "$GITHUB_WORKSPACE/my-upload-key.jks"
+          fi
           test -s "$GITHUB_WORKSPACE/my-upload-key.jks"
 
       - name: Build signed Release APK

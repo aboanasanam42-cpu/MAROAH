@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,12 +28,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,8 +54,8 @@ import com.example.ui.components.CloudSettingsModal
 import com.example.ui.components.FooterCreditsPanel
 import com.example.ui.components.GlassBadge
 import com.example.ui.components.Maroah3DHeader
-import com.example.ui.components.TradingCategoryHeader
 import com.example.ui.components.TradesListModal
+import com.example.ui.components.TradingCategoryHeader
 import com.example.ui.components.TranslucentActionButton
 import com.example.ui.components.VerticalNeonDivider
 import com.example.ui.components.WalletDetailsModal
@@ -89,7 +86,7 @@ fun MaroahScreen(
         // Futuristic 3D Studio & Desk Atmosphere
         AtmosphereCanvas(modifier = Modifier.fillMaxSize())
 
-        // Top Status Bar Controls (Settings & Cloud indicator)
+        // Top Status Bar Controls (Settings, Unified Time, & Cloud indicator)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -98,7 +95,7 @@ fun MaroahScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Cloud Status pill
+            // Cloud Status pill with synchronized UTC time
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -115,11 +112,20 @@ fun MaroahScreen(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (uiState.isSyncing) "مزامنة سحابية..." else "Railway: متصل",
+                    text = if (uiState.isSyncing) "مزامنة سحابية..." else "Railway: متصل (MEXC)",
                     fontSize = 11.sp,
                     color = Color.White.copy(alpha = 0.85f),
                     fontWeight = FontWeight.Medium
                 )
+                if (uiState.unifiedUtcTime.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "• ${uiState.unifiedUtcTime.takeLast(12)}",
+                        fontSize = 10.sp,
+                        color = NeonCyan.copy(alpha = 0.85f),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             // Action icons
@@ -202,6 +208,30 @@ fun MaroahScreen(
                         // Top Header: MAROAH 3D Glowing Text
                         Maroah3DHeader()
 
+                        // BTC/USDT Dedicated Live Indicator
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0x2800F5FF))
+                                .border(BorderStroke(0.8.dp, Color(0x3300F5FF)), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 10.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "BTC/USDT",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonCyan
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = String.format(Locale.US, "$%,.1f", uiState.currentBtcPrice),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Dual Column Layout with Center Vertical Glowing Divider
@@ -246,7 +276,7 @@ fun MaroahScreen(
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
-                                // Bottom Badges Row for Spot (Real MEXC Profit & Loss)
+                                // Bottom Badges Row for Spot (Correct PnL display & colors)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -256,15 +286,15 @@ fun MaroahScreen(
                                     GlassBadge(
                                         title = "خَسارة",
                                         value = lossText,
-                                        borderColor = NeonGreen,
-                                        valueColor = if (uiState.spotSummary.lossValue <= 0) NeonRed else NeonGreen,
+                                        borderColor = NeonRed,
+                                        valueColor = NeonRed,
                                         modifier = Modifier.weight(1f)
                                     )
                                     GlassBadge(
                                         title = "ربح",
                                         value = profitText,
-                                        borderColor = NeonRed,
-                                        valueColor = if (uiState.spotSummary.profitValue >= 0) NeonGreen else NeonRed,
+                                        borderColor = NeonGreen,
+                                        valueColor = NeonGreen,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -311,7 +341,7 @@ fun MaroahScreen(
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
-                                // Bottom Badges Row for Futures (Real MEXC Profit & Loss)
+                                // Bottom Badges Row for Futures (Correct PnL display & colors)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -321,15 +351,15 @@ fun MaroahScreen(
                                     GlassBadge(
                                         title = "خَسارة",
                                         value = lossText,
-                                        borderColor = NeonGreen,
-                                        valueColor = if (uiState.futureSummary.lossValue >= 0) NeonGreen else NeonRed,
+                                        borderColor = NeonRed,
+                                        valueColor = NeonRed,
                                         modifier = Modifier.weight(1f)
                                     )
                                     GlassBadge(
                                         title = "ربح",
                                         value = profitText,
-                                        borderColor = NeonRed,
-                                        valueColor = if (uiState.futureSummary.profitValue <= 0) NeonRed else NeonGreen,
+                                        borderColor = NeonGreen,
+                                        valueColor = NeonGreen,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -400,62 +430,70 @@ fun MaroahScreen(
             is ActiveModal.CloudSettings -> {
                 CloudSettingsModal(
                     currentConfig = uiState.cloudConfig,
-                    onSaveConfig = { config -> viewModel.updateCloudConfig(config) },
+                    onSaveConfig = { newConfig -> viewModel.updateCloudConfig(newConfig) },
                     onDismiss = { viewModel.closeModal() }
                 )
             }
-            else -> Unit
+            ActiveModal.None -> {}
+            is ActiveModal.PlaceTradeDialog -> {}
         }
     }
 }
 
 /**
- * Custom Canvas rendering the 3D futuristic desk atmosphere,
- * holographic grid lines, and soft cyan/magenta light blooms.
+ * High-tech background studio canvas with perspective desk illumination.
  */
 @Composable
-fun AtmosphereCanvas(modifier: Modifier = Modifier) {
+private fun AtmosphereCanvas(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
 
-        // Top-center soft cyan ambient bloom
+        // Top-down soft ambient illumination
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(NeonCyan.copy(alpha = 0.15f), Color.Transparent),
-                center = Offset(w * 0.5f, h * 0.15f),
-                radius = w * 0.7f
-            ),
-            center = Offset(w * 0.5f, h * 0.15f),
-            radius = w * 0.7f
+                colors = listOf(Color(0x3500B4D8), Color(0x150077B6), Color.Transparent),
+                center = Offset(w * 0.5f, h * 0.18f),
+                radius = w * 0.85f
+            )
         )
 
-        // Right side soft magenta bloom (matching the octane render in reference image)
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(NeonMagenta.copy(alpha = 0.12f), Color.Transparent),
-                center = Offset(w * 0.9f, h * 0.4f),
-                radius = w * 0.6f
+        // Desk / Table perspective horizon in lower third
+        val horizonY = h * 0.68f
+        drawLine(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color(0x5500E5FF),
+                    Color(0xAA70B8FF),
+                    Color(0x5500E5FF),
+                    Color.Transparent
+                )
             ),
-            center = Offset(w * 0.9f, h * 0.4f),
-            radius = w * 0.6f
+            start = Offset(0f, horizonY),
+            end = Offset(w, horizonY),
+            strokeWidth = 1.8f
         )
 
-        // Bottom desk reflection glow
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0x330A2A54), Color.Transparent),
-                center = Offset(w * 0.5f, h * 0.92f),
-                radius = w * 0.8f
+        // Lower surface reflection glow
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0x1800E5FF),
+                    Color(0x10031B33),
+                    Color(0x25020B18)
+                ),
+                startY = horizonY,
+                endY = h
             ),
-            center = Offset(w * 0.5f, h * 0.92f),
-            radius = w * 0.8f
+            topLeft = Offset(0f, horizonY),
+            size = androidx.compose.ui.geometry.Size(w, h - horizonY)
         )
 
-        // Subtle holographic grid lines in background
-        val gridStep = 48.dp.toPx()
-        var y = h * 0.05f
-        while (y < h * 0.85f) {
+        // Cybernetic grid lines on lower desk surface
+        val gridStep = 45.dp.toPx()
+        var y = horizonY
+        while (y < h) {
             drawLine(
                 color = Color(0x0C00E5FF),
                 start = Offset(0f, y),
@@ -488,6 +526,6 @@ private fun formatProfitLoss(value: Double): String {
     return if (absVal >= 100.0) {
         String.format(Locale.US, "%s%,.0f", sign, absVal)
     } else {
-        String.format(Locale.US, "%s%,.3f", sign, absVal)
+        String.format(Locale.US, "%s$%,.4f", sign, absVal)
     }
 }
