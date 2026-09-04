@@ -150,7 +150,7 @@ interface MaroahApiService {
 }
 
 object NetworkClient {
-    const val DEFAULT_RAILWAY_URL = "https://maroah-production-33c3.up.railway.app/"
+    const val DEFAULT_RAILWAY_URL = "https://maroah.vercel.app/"
     const val DEFAULT_SESSION_TOKEN = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA="
 
     private var currentSessionToken = DEFAULT_SESSION_TOKEN
