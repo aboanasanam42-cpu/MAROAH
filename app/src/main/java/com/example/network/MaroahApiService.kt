@@ -20,6 +20,23 @@ data class HealthResponse(
     val serverTimeIso: String = ""
 )
 
+data class MarketStateDto(
+    val currentBtcPrice: Double = 0.0,
+    val high24h: Double = 0.0,
+    val low24h: Double = 0.0,
+    val lastPriceUpdate: Long = 0L
+)
+
+data class CloudServerStatusDto(
+    val status: String = "",
+    val server: String = "",
+    val version: String = "",
+    val timestamp: String = "",
+    val serverTimeMillis: Long = 0L,
+    val pair: String = "",
+    val marketState: MarketStateDto? = null
+)
+
 data class AssetDto(
     val coin: String = "",
     val freeAmount: Double = 0.0,
@@ -77,6 +94,9 @@ data class TradeExecutionResponse(
 )
 
 interface MaroahApiService {
+    @GET("/")
+    suspend fun getCloudStatus(): CloudServerStatusDto
+
     @GET("api/health")
     suspend fun checkHealth(): HealthResponse
 
@@ -100,21 +120,24 @@ interface MaroahApiService {
 }
 
 object NetworkClient {
-    private const val DEFAULT_RAILWAY_URL = "https://maroah-production-33c3.up.railway.app/"
-    private var currentSessionToken = "maroah-secure-subaccount-token"
+    const val DEFAULT_RAILWAY_URL = "https://maroah-production-33c3.up.railway.app/"
+    const val DEFAULT_SESSION_TOKEN = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA="
+
+    private var currentSessionToken = DEFAULT_SESSION_TOKEN
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val original = chain.request()
             val requestBuilder = original.newBuilder()
                 .header("x-session-token", currentSessionToken)
+                .header("Authorization", "Bearer $currentSessionToken")
                 .header("Accept", "application/json")
             chain.proceed(requestBuilder.build())
         }

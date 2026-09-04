@@ -108,14 +108,14 @@ fun MaroahScreen(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(if (uiState.isSyncing) NeonMagenta else NeonGreen)
+                        .background(if (uiState.isSyncing) NeonMagenta else (if (uiState.isCloudConnected) NeonGreen else NeonRed))
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (uiState.isSyncing) "مزامنة سحابية..." else "Railway: متصل (MEXC)",
+                    text = if (uiState.isSyncing) "مزامنة لحظية..." else uiState.cloudStatus,
                     fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontWeight = FontWeight.Medium
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.SemiBold
                 )
                 if (uiState.unifiedUtcTime.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(6.dp))

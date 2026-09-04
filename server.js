@@ -215,6 +215,27 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/market', (req, res) => {
+  res.json({
+    pair: 'BTC/USDT',
+    marketState,
+    serverTimeMillis: Date.now()
+  });
+});
+
+app.get('/api/status', (req, res) => {
+  const serverNow = Date.now();
+  res.json({
+    status: 'active',
+    server: 'MAROAH Standalone Cloud Server (Railway)',
+    version: '2.0.0',
+    timestamp: new Date(serverNow).toISOString(),
+    serverTimeMillis: serverNow,
+    pair: 'BTC/USDT ONLY',
+    marketState
+  });
+});
+
 // Helper to compute cumulative profit and loss for Spot
 function calculateSpotTotals() {
   const spotTrades = tradeHistory.filter(t => t.type === 'SPOT');

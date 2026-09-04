@@ -43,6 +43,6 @@ data class ColumnSummary(
 
 data class CloudConfig(
     val serverUrl: String = "https://maroah-production-33c3.up.railway.app",
-    val sessionToken: String = "maroah-secure-subaccount-token",
+    val sessionToken: String = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA=",
     val isLiveCloudMode: Boolean = true
 )
