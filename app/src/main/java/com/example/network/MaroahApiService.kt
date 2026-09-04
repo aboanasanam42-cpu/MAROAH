@@ -75,11 +75,34 @@ data class TradesResponse(
     val trades: List<TradeItemDto> = emptyList()
 )
 
+data class BotWalletStateDto(
+    val balance: Double = 0.0,
+    val openOrdersCount: Int = 0,
+    val openPositionsCount: Int = 0,
+    val profit: Double = 0.0,
+    val loss: Double = 0.0
+)
+
+data class BotStatusDataDto(
+    val spot: BotWalletStateDto = BotWalletStateDto(),
+    val future: BotWalletStateDto = BotWalletStateDto(),
+    val lastUpdated: String = "",
+    val botStatus: String = "RUNNING_AUTO_24_7",
+    val btcPrice: Double = 0.0,
+    val serverTimeMillis: Long = 0L
+)
+
+data class BotStatusResponse(
+    val success: Boolean = false,
+    val data: BotStatusDataDto = BotStatusDataDto()
+)
+
 data class TradeRequest(
     val type: String,
     val symbol: String,
     val side: String,
-    val amountUsd: Double = 1.0
+    val amountUsd: Double = 1.0,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 data class TradeExecutionResponse(
@@ -98,6 +121,9 @@ interface MaroahApiService {
     @GET("/")
     suspend fun getCloudStatus(): CloudServerStatusDto
 
+    @GET("api/bot-status")
+    suspend fun getBotStatus(): BotStatusResponse
+
     @GET("api/health")
     suspend fun checkHealth(): HealthResponse
 
@@ -109,6 +135,9 @@ interface MaroahApiService {
 
     @GET("api/trades")
     suspend fun getTrades(@Query("type") type: String? = null): TradesResponse
+
+    @POST("api/trade/place-order")
+    suspend fun placeOrder(@Body request: TradeRequest): TradeExecutionResponse
 
     @POST("api/trade/spot")
     suspend fun executeSpotTrade(@Body request: TradeRequest): TradeExecutionResponse

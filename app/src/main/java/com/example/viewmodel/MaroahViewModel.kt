@@ -122,9 +122,9 @@ class MaroahViewModel : ViewModel() {
             val api = NetworkClient.getApiService(config.serverUrl, config.sessionToken)
 
             withContext(Dispatchers.IO) {
-                // 1. Fetch server status and live BTC market state from Railway
-                val serverStatus = try {
-                    api.getCloudStatus()
+                // 1. Fast Polling from Headless Daemon /api/bot-status
+                val botStatusResp = try {
+                    api.getBotStatus()
                 } catch (_: Exception) {
                     null
                 }
@@ -152,22 +152,48 @@ class MaroahViewModel : ViewModel() {
 
                 withContext(Dispatchers.Main) {
                     _uiState.update { current ->
-                        val btcPrice = serverStatus?.marketState?.currentBtcPrice?.takeIf { it > 1000.0 }
+                        val botData = botStatusResp?.data
+                        val btcPrice = botData?.btcPrice?.takeIf { it > 1000.0 }
                             ?: current.currentBtcPrice
-                        val high = serverStatus?.marketState?.high24h?.takeIf { it > 1000.0 }
-                            ?: current.high24h
-                        val low = serverStatus?.marketState?.low24h?.takeIf { it > 1000.0 }
-                            ?: current.low24h
 
-                        // Parse Spot assets & totals
+                        // Parse Spot assets & totals (Prioritize fast Daemon botData)
+                        val spotBalanceVal = botData?.spot?.balance?.takeIf { it > 0 }
+                            ?: spotBalance?.balanceUsdt?.takeIf { it > 0 }
+                            ?: current.spotSummary.balanceUsdt
+
+                        val spotProfitVal = botData?.spot?.profit
+                            ?: spotBalance?.profitValue
+                            ?: current.spotSummary.profitValue
+
+                        val spotLossVal = botData?.spot?.loss
+                            ?: spotBalance?.lossValue
+                            ?: current.spotSummary.lossValue
+
                         val spotAssets = spotBalance?.assets?.map {
                             WalletAsset(it.coin, it.freeAmount, it.lockedAmount, it.usdtValue)
-                        }?.takeIf { it.isNotEmpty() } ?: current.spotSummary.assets
+                        }?.takeIf { it.isNotEmpty() } ?: listOf(
+                            WalletAsset("USDT", spotBalanceVal, 0.0, spotBalanceVal),
+                            WalletAsset("BTC", 0.0, 0.0, 0.0)
+                        )
 
-                        // Parse Futures assets & totals
+                        // Parse Futures assets & totals (Prioritize fast Daemon botData)
+                        val futuresBalanceVal = botData?.future?.balance?.takeIf { it > 0 }
+                            ?: futuresBalance?.balanceUsdt?.takeIf { it > 0 }
+                            ?: current.futureSummary.balanceUsdt
+
+                        val futuresProfitVal = botData?.future?.profit
+                            ?: futuresBalance?.profitValue
+                            ?: current.futureSummary.profitValue
+
+                        val futuresLossVal = botData?.future?.loss
+                            ?: futuresBalance?.lossValue
+                            ?: current.futureSummary.lossValue
+
                         val futuresAssets = futuresBalance?.assets?.map {
                             WalletAsset(it.coin, it.freeAmount, it.lockedAmount, it.usdtValue)
-                        }?.takeIf { it.isNotEmpty() } ?: current.futureSummary.assets
+                        }?.takeIf { it.isNotEmpty() } ?: listOf(
+                            WalletAsset("USDT Futures Margin (BTC-PERP)", futuresBalanceVal, 0.0, futuresBalanceVal)
+                        )
 
                         // Parse real trade orders from cloud
                         val allTrades = tradesResp?.trades?.map { dto ->
@@ -183,35 +209,33 @@ class MaroahViewModel : ViewModel() {
                                 pnlPercent = dto.pnlPercent,
                                 timestamp = dto.timestamp,
                                 status = dto.status,
-                                strategy = dto.strategy ?: "MEXC Cloud Harvest"
+                                strategy = dto.strategy ?: "Daemon 24/7 Automated Strategy"
                             )
                         } ?: emptyList()
 
                         val spotTrades = allTrades.filter { it.type == TradeType.SPOT }.ifEmpty { current.spotSummary.trades }
                         val futuresTrades = allTrades.filter { it.type == TradeType.FUTURE }.ifEmpty { current.futureSummary.trades }
 
-                        val isConnected = spotBalance != null || futuresBalance != null || serverStatus != null
+                        val isConnected = botStatusResp != null || spotBalance != null || futuresBalance != null
 
                         current.copy(
                             isSyncing = false,
                             isCloudConnected = isConnected,
-                            cloudStatus = if (isConnected) "اتصال سحابي 100% • MEXC Live" else "جاري محاولة الاتصال بـ Railway...",
+                            cloudStatus = if (isConnected) "سحابة Railway متصلة 24/7 • MEXC Daemon" else "جاري محاولة الاتصال بـ Railway...",
                             currentBtcPrice = btcPrice,
-                            high24h = high,
-                            low24h = low,
                             spotSummary = current.spotSummary.copy(
-                                balanceUsdt = spotBalance?.balanceUsdt?.takeIf { it > 0 } ?: current.spotSummary.balanceUsdt,
-                                profitValue = spotBalance?.profitValue ?: current.spotSummary.profitValue,
-                                lossValue = spotBalance?.lossValue ?: current.spotSummary.lossValue,
-                                activeTradesCount = spotBalance?.activeTradesCount?.takeIf { it > 0 } ?: spotTrades.size,
+                                balanceUsdt = spotBalanceVal,
+                                profitValue = spotProfitVal,
+                                lossValue = spotLossVal,
+                                activeTradesCount = botData?.spot?.openOrdersCount?.takeIf { it > 0 } ?: spotTrades.size,
                                 assets = spotAssets,
                                 trades = spotTrades
                             ),
                             futureSummary = current.futureSummary.copy(
-                                balanceUsdt = futuresBalance?.balanceUsdt?.takeIf { it > 0 } ?: current.futureSummary.balanceUsdt,
-                                profitValue = futuresBalance?.profitValue ?: current.futureSummary.profitValue,
-                                lossValue = futuresBalance?.lossValue ?: current.futureSummary.lossValue,
-                                activeTradesCount = futuresBalance?.activeTradesCount?.takeIf { it > 0 } ?: futuresTrades.size,
+                                balanceUsdt = futuresBalanceVal,
+                                profitValue = futuresProfitVal,
+                                lossValue = futuresLossVal,
+                                activeTradesCount = botData?.future?.openPositionsCount?.takeIf { it > 0 } ?: futuresTrades.size,
                                 assets = futuresAssets,
                                 trades = futuresTrades
                             )
@@ -278,15 +302,12 @@ class MaroahViewModel : ViewModel() {
                     type = if (type == TradeType.SPOT) "SPOT" else "FUTURE",
                     symbol = btcSymbol,
                     side = side.name,
-                    amountUsd = 1.0
+                    amountUsd = 1.0,
+                    timestamp = System.currentTimeMillis()
                 )
 
                 val response = withContext(Dispatchers.IO) {
-                    if (type == TradeType.SPOT) {
-                        api.executeSpotTrade(request)
-                    } else {
-                        api.executeFuturesTrade(request)
-                    }
+                    api.placeOrder(request)
                 }
 
                 if (response.success) {
