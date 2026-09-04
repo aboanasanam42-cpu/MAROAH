@@ -27,18 +27,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -56,12 +66,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.CloudConfig
 import com.example.model.ColumnSummary
+import com.example.model.MexcDiagnosticResult
 import com.example.model.OrderSide
 import com.example.model.TradeOrder
 import com.example.model.TradeType
@@ -441,18 +454,25 @@ fun TradeItemRow(trade: TradeOrder) {
 @Composable
 fun CloudSettingsModal(
     currentConfig: CloudConfig,
+    isTestingDiagnostic: Boolean = false,
+    diagnosticResult: MexcDiagnosticResult? = null,
+    onRunDiagnostic: () -> Unit = {},
     onSaveConfig: (CloudConfig) -> Unit,
     onDismiss: () -> Unit
 ) {
     var serverUrl by remember { mutableStateOf(currentConfig.serverUrl) }
     var fallbackUrl by remember { mutableStateOf(currentConfig.fallbackUrl) }
+    var hummingbotGatewayUrl by remember { mutableStateOf(currentConfig.hummingbotGatewayUrl) }
     var sessionToken by remember { mutableStateOf(currentConfig.sessionToken) }
+    var mexcApiKey by remember { mutableStateOf(currentConfig.mexcApiKey) }
+    var mexcSecretKey by remember { mutableStateOf(currentConfig.mexcSecretKey) }
+    var showSecretKey by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(4.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xF80B1424)),
             border = BorderStroke(1.5.dp, Color(0x6600E5FF))
@@ -460,9 +480,10 @@ fun CloudSettingsModal(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(18.dp)
             ) {
                 item {
+                    // Header
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -471,16 +492,24 @@ fun CloudSettingsModal(
                         IconButton(onClick = onDismiss, modifier = Modifier.testTag("close_settings_dialog")) {
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                         }
-                        Text(
-                            text = "إعدادات الربط السحابي ومفاتيح MEXC",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NeonCyan,
-                            textAlign = TextAlign.End
-                        )
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "إعدادات الربط والوسيط MEXC",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonCyan,
+                                textAlign = TextAlign.End
+                            )
+                            Text(
+                                text = "وسيط الارتباط المعتمد: Hummingbot",
+                                fontSize = 11.sp,
+                                color = NeonGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Notice Card
                     Row(
@@ -489,29 +518,124 @@ fun CloudSettingsModal(
                             .clip(RoundedCornerShape(12.dp))
                             .background(Color(0x2200E5FF))
                             .border(BorderStroke(1.dp, Color(0x3300E5FF)), RoundedCornerShape(12.dp))
-                            .padding(12.dp),
+                            .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Security, contentDescription = "Security", tint = NeonCyan)
+                        Icon(Icons.Default.Verified, contentDescription = "Security", tint = NeonGreen)
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "مفاتيح MEXC مُؤمَّنة وتعمل بتوقيت موحد مع السيرفر السحابي لحماية الصفقات وجني الأرباح.",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                            lineHeight = 16.sp
+                            text = "اتصال حقيقي 100% مع MEXC عبر خوارزميات الوسيط Hummingbot والسحابة المستقلة لضمان تنفيذ حقيقي للأوامر بمقدار 1$.",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.9f),
+                            lineHeight = 15.sp
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
+                    // MEXC API Credentials Section
                     Text(
-                        text = "رابط سيرفر Railway السحابي المستقل:",
-                        fontSize = 13.sp,
+                        text = "مفتاح MEXC API Key:",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White.copy(alpha = 0.9f)
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    OutlinedTextField(
+                        value = mexcApiKey,
+                        onValueChange = { mexcApiKey = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("mexc_api_key_input"),
+                        placeholder = { Text("أدخل MEXC API Key للتداول الحقيقي", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = Color(0x4400E5FF),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "المفتاح السري MEXC Secret Key:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    OutlinedTextField(
+                        value = mexcSecretKey,
+                        onValueChange = { mexcSecretKey = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("mexc_secret_key_input"),
+                        placeholder = { Text("أدخل MEXC Secret Key", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp) },
+                        visualTransformation = if (showSecretKey) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showSecretKey = !showSecretKey }) {
+                                Icon(
+                                    if (showSecretKey) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Toggle Secret",
+                                    tint = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = Color(0x4400E5FF),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Hummingbot Gateway URL
+                    Text(
+                        text = "رابط وسيط Hummingbot Gateway:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    OutlinedTextField(
+                        value = hummingbotGatewayUrl,
+                        onValueChange = { hummingbotGatewayUrl = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("hummingbot_gateway_input"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = Color(0x4400E5FF),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "رابط سيرفر Railway السحابي (الرئيسي):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     OutlinedTextField(
                         value = serverUrl,
@@ -529,16 +653,16 @@ fun CloudSettingsModal(
                         singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
                         text = "رابط السيرفر الاحتياطي Vercel (Fallback):",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White.copy(alpha = 0.9f)
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     OutlinedTextField(
                         value = fallbackUrl,
@@ -556,16 +680,16 @@ fun CloudSettingsModal(
                         singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
                         text = "رمز الجلسة المشفر (Session Token):",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White.copy(alpha = 0.9f)
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     OutlinedTextField(
                         value = sessionToken,
@@ -583,22 +707,100 @@ fun CloudSettingsModal(
                         singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
+                    // Live Diagnostic Test Button
+                    OutlinedButton(
+                        onClick = onRunDiagnostic,
+                        enabled = !isTestingDiagnostic,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .testTag("run_diagnostic_btn"),
+                        border = BorderStroke(1.2.dp, NeonGreen),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isTestingDiagnostic) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = NeonGreen,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("جاري فحص الاتصال الحقيقي مع MEXC...", color = NeonGreen, fontSize = 12.sp)
+                        } else {
+                            Icon(Icons.Default.Speed, contentDescription = "Test", tint = NeonGreen)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "⚡ اختبار الاتصال الحقيقي مع MEXC و Hummingbot",
+                                color = NeonGreen,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    // Diagnostic Results Card if available
+                    if (diagnosticResult != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0x3300E5FF)),
+                            border = BorderStroke(1.dp, if (diagnosticResult.mexcAuthValid || diagnosticResult.mexcPublicApiPing) NeonGreen else NeonCyan)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        if (diagnosticResult.mexcAuthValid || diagnosticResult.mexcPublicApiPing) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                        contentDescription = "Status",
+                                        tint = if (diagnosticResult.mexcAuthValid || diagnosticResult.mexcPublicApiPing) NeonGreen else NeonCyan,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = diagnosticResult.message,
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "الوسيط: ${diagnosticResult.broker} • الاستجابة: ${diagnosticResult.mexcLatencyMs}ms • الفارق الزمني: ${diagnosticResult.timeDriftMs}ms",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 10.sp
+                                )
+                                Text(
+                                    text = "الأرصدة الحقيقية: Spot: $${diagnosticResult.spotBalanceUsdt} USDT | Futures: $${diagnosticResult.futuresBalanceUsdt} USDT",
+                                    color = NeonCyan,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Save Button
                     Button(
                         onClick = {
                             onSaveConfig(
                                 currentConfig.copy(
                                     serverUrl = serverUrl.trim(),
                                     fallbackUrl = fallbackUrl.trim(),
-                                    sessionToken = sessionToken.trim()
+                                    hummingbotGatewayUrl = hummingbotGatewayUrl.trim(),
+                                    sessionToken = sessionToken.trim(),
+                                    mexcApiKey = mexcApiKey.trim(),
+                                    mexcSecretKey = mexcSecretKey.trim()
                                 )
                             )
                             onDismiss()
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .height(48.dp)
                             .testTag("save_cloud_config_btn"),
                         colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
                         shape = RoundedCornerShape(14.dp)
@@ -606,10 +808,10 @@ fun CloudSettingsModal(
                         Icon(Icons.Default.Save, contentDescription = "Save", tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "حفظ ومزامنة فورية",
+                            text = "حفظ ومزامنة فورية مع السحابة و MEXC",
                             color = Color.Black,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                            fontSize = 13.sp
                         )
                     }
                 }

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -207,6 +208,31 @@ fun MaroahScreen(
                     ) {
                         // Top Header: MAROAH 3D Glowing Text
                         Maroah3DHeader()
+
+                        // Hummingbot MEXC Official Broker Badge
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 2.dp, bottom = 6.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0x2000E5FF))
+                                .border(BorderStroke(0.8.dp, Color(0x4000E5FF)), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Verified,
+                                contentDescription = "Broker Verified",
+                                tint = NeonGreen,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "وسيط الارتباط: Hummingbot • MEXC Official Broker",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
 
                         // BTC/USDT Dedicated Live Indicator
                         Row(
@@ -430,6 +456,9 @@ fun MaroahScreen(
             is ActiveModal.CloudSettings -> {
                 CloudSettingsModal(
                     currentConfig = uiState.cloudConfig,
+                    isTestingDiagnostic = uiState.isTestingDiagnostic,
+                    diagnosticResult = uiState.mexcDiagnosticResult,
+                    onRunDiagnostic = { viewModel.runMexcDiagnosticTest() },
                     onSaveConfig = { newConfig -> viewModel.updateCloudConfig(newConfig) },
                     onDismiss = { viewModel.closeModal() }
                 )

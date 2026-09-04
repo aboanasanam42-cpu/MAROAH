@@ -1,5 +1,6 @@
 package com.example.network
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
@@ -12,61 +13,251 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
-data class HealthResponse(val status: String = "", val server: String = "", val serverTimeMillis: Long = 0L, val serverTimeIso: String = "")
-data class MarketIndicatorsDto(val signal: String = "NEUTRAL", val confidence: Double = 0.0, val ema9: Double? = null, val ema21: Double? = null, val rsi14: Double? = null)
-data class MarketSnapshotDto(val symbol: String = "BTCUSDT", val futuresSymbol: String = "BTC_USDT", val interval: String = "5m", val price: Double = 0.0, val high24h: Double = 0.0, val low24h: Double = 0.0, val volume24h: Double = 0.0, val priceChangePercent24h: Double = 0.0, val indicators: MarketIndicatorsDto = MarketIndicatorsDto(), val candles: Int = 0, val source: String = "", val updatedAt: String = "")
-data class MarketResponse(val success: Boolean = false, val data: MarketSnapshotDto = MarketSnapshotDto())
-data class SignalDataDto(val symbol: String = "BTCUSDT", val strategy: String = "EMA 9/21 + RSI 14", val signal: MarketIndicatorsDto = MarketIndicatorsDto(), val generatedAt: String = "", val note: String = "")
-data class SignalResponse(val success: Boolean = false, val data: SignalDataDto = SignalDataDto())
-data class MarketStateDto(val currentBtcPrice: Double = 0.0, val high24h: Double = 0.0, val low24h: Double = 0.0, val lastPriceUpdate: Long = 0L)
-data class CloudServerStatusDto(val status: String = "", val server: String = "", val version: String = "", val timestamp: String = "", val serverTimeMillis: Long = 0L, val pair: String = "", val marketState: MarketStateDto? = null)
-data class AssetDto(val coin: String = "", val freeAmount: Double = 0.0, val lockedAmount: Double = 0.0, val usdtValue: Double = 0.0)
-data class BalanceResponse(val source: String? = null, val serverTimeMillis: Long = 0L, val serverTimeIso: String = "", val balanceUsdt: Double? = null, val profitValue: Double? = null, val lossValue: Double? = null, val activeTradesCount: Int? = null, val assets: List<AssetDto> = emptyList())
-data class TradeItemDto(val id: String = "", val symbol: String = "BTC/USDT", val type: String = "SPOT", val side: String = "BUY", val amountUsd: Double = 0.0, val entryPrice: Double = 0.0, val currentPrice: Double = 0.0, val pnl: Double = 0.0, val pnlPercent: Double = 0.0, val timestamp: Long = 0L, val status: String = "", val strategy: String? = null)
-data class TradesResponse(val serverTimeMillis: Long = 0L, val trades: List<TradeItemDto> = emptyList())
-data class BotWalletStateDto(val balance: Double? = null, val openOrdersCount: Int? = null, val openPositionsCount: Int? = null, val profit: Double? = null, val loss: Double? = null)
-data class BotStatusDataDto(val spot: BotWalletStateDto = BotWalletStateDto(), val future: BotWalletStateDto = BotWalletStateDto(), val lastUpdated: String = "", val botStatus: String = "LIVE_TELEMETRY", val btcPrice: Double = 0.0, val signal: MarketIndicatorsDto = MarketIndicatorsDto(), val serverTimeMillis: Long = 0L)
-data class BotStatusResponse(val success: Boolean = false, val data: BotStatusDataDto = BotStatusDataDto())
-data class TradeRequest(val type: String, val symbol: String, val side: String, val amountUsd: Double = 0.0, val timestamp: Long = System.currentTimeMillis())
-data class TradeExecutionResponse(val success: Boolean = false, val message: String = "", val order: TradeItemDto? = null, val serverTimeMillis: Long = 0L, val serverTimeIso: String = "", val activeTradesCount: Int? = null, val profitValue: Double? = null, val lossValue: Double? = null, val realMexcExecuted: Boolean? = null)
+data class HealthResponse(
+    val status: String = "",
+    val server: String = "",
+    val serverTimeMillis: Long = 0L,
+    val serverTimeIso: String = ""
+)
+
+data class MarketStateDto(
+    val currentBtcPrice: Double = 0.0,
+    val high24h: Double = 0.0,
+    val low24h: Double = 0.0,
+    val lastPriceUpdate: Long = 0L
+)
+
+data class CloudServerStatusDto(
+    val status: String = "",
+    val server: String = "",
+    val version: String = "",
+    val timestamp: String = "",
+    val serverTimeMillis: Long = 0L,
+    val pair: String = "",
+    val marketState: MarketStateDto? = null
+)
+
+data class AssetDto(
+    val coin: String = "",
+    val freeAmount: Double = 0.0,
+    val lockedAmount: Double = 0.0,
+    val usdtValue: Double = 0.0
+)
+
+data class BalanceResponse(
+    val source: String? = null,
+    val serverTimeMillis: Long = 0L,
+    val serverTimeIso: String = "",
+    val balanceUsdt: Double = 0.0,
+    val profitValue: Double = 0.0,
+    val lossValue: Double = 0.0,
+    val activeTradesCount: Int = 0,
+    val assets: List<AssetDto> = emptyList()
+)
+
+data class TradeItemDto(
+    val id: String = "",
+    val symbol: String = "BTC/USDT",
+    val type: String = "SPOT",
+    val side: String = "BUY",
+    val amountUsd: Double = 1.0,
+    val entryPrice: Double = 0.0,
+    val currentPrice: Double = 0.0,
+    val pnl: Double = 0.0,
+    val pnlPercent: Double = 0.0,
+    val timestamp: Long = System.currentTimeMillis(),
+    val status: String = "FILLED",
+    val strategy: String? = null
+)
+
+data class TradesResponse(
+    val serverTimeMillis: Long = 0L,
+    val trades: List<TradeItemDto> = emptyList()
+)
+
+data class BotWalletStateDto(
+    val balance: Double = 0.0,
+    val openOrdersCount: Int = 0,
+    val openPositionsCount: Int = 0,
+    val profit: Double = 0.0,
+    val loss: Double = 0.0
+)
+
+data class BotStatusDataDto(
+    val spot: BotWalletStateDto = BotWalletStateDto(),
+    val future: BotWalletStateDto = BotWalletStateDto(),
+    val lastUpdated: String = "",
+    val botStatus: String = "RUNNING_AUTO_24_7",
+    val btcPrice: Double = 0.0,
+    val serverTimeMillis: Long = 0L
+)
+
+data class BotStatusResponse(
+    val success: Boolean = false,
+    val data: BotStatusDataDto = BotStatusDataDto()
+)
+
+data class TradeRequest(
+    val type: String,
+    val symbol: String,
+    val side: String,
+    val amountUsd: Double = 1.0,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class TradeExecutionResponse(
+    val success: Boolean = false,
+    val message: String = "",
+    val order: TradeItemDto? = null,
+    val serverTimeMillis: Long = 0L,
+    val serverTimeIso: String = "",
+    val activeTradesCount: Int? = null,
+    val profitValue: Double? = null,
+    val lossValue: Double? = null,
+    val realMexcExecuted: Boolean? = null
+)
+
+data class MexcKeysConfigRequest(
+    val apiKey: String,
+    val secretKey: String,
+    val gatewayUrl: String? = null
+)
+
+data class MexcKeysConfigResponse(
+    val success: Boolean = false,
+    val message: String = "",
+    val broker: String = "Hummingbot",
+    val latencyMs: Long = 0L,
+    val testVerified: Boolean = false,
+    val usdtBalance: Double? = null,
+    val error: String? = null
+)
+
+data class DiagnosticDataDto(
+    val serverTimeMillis: Long = 0L,
+    val broker: String = "Hummingbot",
+    val mexcPublicApiPing: Boolean = false,
+    val mexcLatencyMs: Long = 0L,
+    val timeDriftMs: Long = 0L,
+    val keysConfigured: Boolean = false,
+    val mexcAuthValid: Boolean = false,
+    val spotBalanceUsdt: Double = 0.0,
+    val futuresBalanceUsdt: Double = 0.0,
+    val hummingbotGatewayActive: Boolean = false,
+    val message: String = "",
+    val mexcAuthError: Any? = null
+)
+
+data class DiagnosticResponse(
+    val success: Boolean = false,
+    val data: DiagnosticDataDto = DiagnosticDataDto()
+)
+
+data class HummingbotStatusDto(
+    val broker: String = "Hummingbot",
+    val connector: String = "mexc",
+    val pair: String = "BTC-USDT",
+    val gatewayUrl: String = "",
+    val strategy: String = "simple_pmm",
+    val status: String = "RUNNING",
+    val marketMakingSpreadPercent: Double = 0.15,
+    val orderAmountUsd: Double = 1.0,
+    val refreshIntervalSeconds: Int = 5,
+    val lastSync: String = ""
+)
+
+data class HummingbotStatusResponse(
+    val success: Boolean = false,
+    val data: HummingbotStatusDto = HummingbotStatusDto()
+)
 
 interface MaroahApiService {
-    @GET("/") suspend fun getCloudStatus(): CloudServerStatusDto
-    @GET("api/bot-status") suspend fun getBotStatus(): BotStatusResponse
-    @GET("api/health") suspend fun checkHealth(): HealthResponse
-    @GET("api/market") suspend fun getMarket(): MarketResponse
-    @GET("api/signals") suspend fun getSignals(): SignalResponse
-    @GET("api/balance/spot") suspend fun getSpotBalance(): BalanceResponse
-    @GET("api/balance/futures") suspend fun getFuturesBalance(): BalanceResponse
-    @GET("api/trades") suspend fun getTrades(@Query("type") type: String? = null): TradesResponse
-    @POST("api/trade/place-order") suspend fun placeOrder(@Body request: TradeRequest): TradeExecutionResponse
-    @POST("api/trade/spot") suspend fun executeSpotTrade(@Body request: TradeRequest): TradeExecutionResponse
-    @POST("api/trade/futures") suspend fun executeFuturesTrade(@Body request: TradeRequest): TradeExecutionResponse
-    @POST("api/trade") suspend fun executeTrade(@Body request: TradeRequest): TradeExecutionResponse
+    @GET("/")
+    suspend fun getCloudStatus(): CloudServerStatusDto
+
+    @GET("api/bot-status")
+    suspend fun getBotStatus(): BotStatusResponse
+
+    @GET("api/health")
+    suspend fun checkHealth(): HealthResponse
+
+    @GET("api/balance/spot")
+    suspend fun getSpotBalance(): BalanceResponse
+
+    @GET("api/balance/futures")
+    suspend fun getFuturesBalance(): BalanceResponse
+
+    @GET("api/trades")
+    suspend fun getTrades(@Query("type") type: String? = null): TradesResponse
+
+    @GET("api/diagnostic/mexc-test")
+    suspend fun runDiagnostic(): DiagnosticResponse
+
+    @POST("api/config/mexc-keys")
+    suspend fun saveMexcKeys(@Body request: MexcKeysConfigRequest): MexcKeysConfigResponse
+
+    @GET("api/hummingbot/status")
+    suspend fun getHummingbotStatus(): HummingbotStatusResponse
+
+    @POST("api/trade/place-order")
+    suspend fun placeOrder(@Body request: TradeRequest): TradeExecutionResponse
+
+    @POST("api/trade/spot")
+    suspend fun executeSpotTrade(@Body request: TradeRequest): TradeExecutionResponse
+
+    @POST("api/trade/futures")
+    suspend fun executeFuturesTrade(@Body request: TradeRequest): TradeExecutionResponse
+
+    @POST("api/trade")
+    suspend fun executeTrade(@Body request: TradeRequest): TradeExecutionResponse
 }
 
 object NetworkClient {
     const val DEFAULT_RAILWAY_URL = "https://maroah-production.up.railway.app/"
-    private const val DEFAULT_VERCEL_URL = ""
-    private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-    private val http = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).writeTimeout(10, TimeUnit.SECONDS).addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }).build()
+    const val DEFAULT_SESSION_TOKEN = "msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA="
+
+    private var currentSessionToken = DEFAULT_SESSION_TOKEN
+
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val original = chain.request()
+            val requestBuilder = original.newBuilder()
+                .header("x-session-token", currentSessionToken)
+                .header("Authorization", "Bearer $currentSessionToken")
+                .header("Accept", "application/json")
+            chain.proceed(requestBuilder.build())
+        }
+        .addInterceptor(HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        })
+        .build()
+
+    private var currentBaseUrl = DEFAULT_RAILWAY_URL
+    private var currentApi: MaroahApiService? = null
 
     @Synchronized
-    fun create(baseUrl: String): MaroahApiService = Retrofit.Builder().baseUrl(if (baseUrl.endsWith('/')) baseUrl else "$baseUrl/").client(http).addConverterFactory(MoshiConverterFactory.create(moshi)).build().create(MaroahApiService::class.java)
-
-    fun railway(): MaroahApiService = create(DEFAULT_RAILWAY_URL)
-    fun vercel(): MaroahApiService? = DEFAULT_VERCEL_URL.takeIf { it.isNotBlank() }?.let(::create)
-
-    // Compatibility factory for existing UI code. Authentication stays server-side; no credential is embedded here.
-    fun getApiService(baseUrl: String, sessionToken: String? = null): MaroahApiService = create(baseUrl)
-}
-
-class MaroahFailoverClient(private val primary: MaroahApiService = NetworkClient.railway(), private val backup: MaroahApiService? = NetworkClient.vercel()) {
-    suspend fun market(): MarketResponse = withFailover({ primary.getMarket() }, backup?.let { { it.getMarket() } })
-    suspend fun signals(): SignalResponse = withFailover({ primary.getSignals() }, backup?.let { { it.getSignals() } })
-    suspend fun botStatus(): BotStatusResponse = withFailover({ primary.getBotStatus() }, backup?.let { { it.getBotStatus() } })
-    suspend fun health(): HealthResponse = withFailover({ primary.checkHealth() }, backup?.let { { it.checkHealth() } })
-    suspend fun spotBalance(): BalanceResponse = withFailover({ primary.getSpotBalance() }, backup?.let { { it.getSpotBalance() } })
-
-    private suspend fun <T> withFailover(primaryCall: suspend () -> T, backupCall: (suspend () -> T)?): T = try { primaryCall() } catch (primaryError: Throwable) { if (backupCall == null) throw primaryError else backupCall() }
+    fun getApiService(
+        baseUrl: String = DEFAULT_RAILWAY_URL,
+        sessionToken: String = currentSessionToken
+    ): MaroahApiService {
+        val normalizedUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+        if (currentApi == null || currentBaseUrl != normalizedUrl || currentSessionToken != sessionToken) {
+            currentBaseUrl = normalizedUrl
+            currentSessionToken = sessionToken
+            currentApi = Retrofit.Builder()
+                .baseUrl(normalizedUrl)
+                .client(okHttpClient)
+                .addConverterFactory(MoshiConverterFactory.create(moshi))
+                .build()
+                .create(MaroahApiService::class.java)
+        }
+        return currentApi!!
+    }
 }
