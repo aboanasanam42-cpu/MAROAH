@@ -90,7 +90,8 @@ data class TradeExecutionResponse(
     val serverTimeIso: String = "",
     val activeTradesCount: Int? = null,
     val profitValue: Double? = null,
-    val lossValue: Double? = null
+    val lossValue: Double? = null,
+    val realMexcExecuted: Boolean? = null
 )
 
 interface MaroahApiService {
