@@ -781,7 +781,11 @@ app.post('/api/trade', (req, res) => {
   return app._router.handle(req, res);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[MAROAH DAEMON] Automated 24/7 Trading Engine running on port ${PORT}`);
-  console.log(`[SECURITY] Three-Tier Architecture active. APK acts as Read-Only Monitor.`);
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[MAROAH DAEMON] Automated 24/7 Trading Engine running on port ${PORT} (Railway & Standalone)`);
+    console.log(`[SECURITY] Three-Tier Architecture active. APK acts as Read-Only Monitor.`);
+  });
+}
+
+module.exports = app;
