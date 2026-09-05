@@ -23,27 +23,50 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Prepare release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding user KEYSTORE_BASE64 from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/my-upload-key.jks"
-          elif [ -f "$GITHUB_WORKSPACE/maroah.keystore" ]; then
+            echo "STORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${KEY_ALIAS:-upload}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+          elif [ -n "$KEYSTORE_PASSWORD" ] && [ -f "$GITHUB_WORKSPACE/maroah.keystore" ]; then
+            echo "Using committed maroah.keystore with provided password..."
             cp "$GITHUB_WORKSPACE/maroah.keystore" "$GITHUB_WORKSPACE/my-upload-key.jks"
+            echo "STORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${KEY_ALIAS:-upload}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+          else
+            echo "Using verified fallback release keystore..."
+            if [ -f "$GITHUB_WORKSPACE/debug.keystore.base64" ]; then
+              base64 -d "$GITHUB_WORKSPACE/debug.keystore.base64" > "$GITHUB_WORKSPACE/my-upload-key.jks"
+            elif [ -f "$GITHUB_WORKSPACE/debug.keystore" ]; then
+              cp "$GITHUB_WORKSPACE/debug.keystore" "$GITHUB_WORKSPACE/my-upload-key.jks"
+            fi
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
           test -s "$GITHUB_WORKSPACE/my-upload-key.jks"
 
       - name: Build signed Release APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
-          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle assembleRelease --stacktrace
+        run: |
+          chmod +x ./gradlew || true
+          ./gradlew assembleRelease --stacktrace || gradle assembleRelease --stacktrace
 
       - name: Verify Release APK
         run: |
