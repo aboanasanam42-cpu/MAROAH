@@ -30,7 +30,7 @@ android {
       val envKeyAlias = System.getenv("KEY_ALIAS")?.ifBlank { null }
       val envKeyPass = System.getenv("KEY_PASSWORD")?.ifBlank { null }
 
-      storePassword = envStorePass ?: if (resolvedKeystore.name.contains("debug")) "android" else "maroah2026"
+      storePassword = envStorePass ?: "android"
       keyAlias = envKeyAlias ?: if (resolvedKeystore.name.contains("debug")) "androiddebugkey" else "upload"
       keyPassword = envKeyPass ?: storePassword
     }
