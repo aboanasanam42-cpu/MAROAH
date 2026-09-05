@@ -15,7 +15,9 @@
 .cxx
 local.properties
 .env
+.env.local
+.env.*
+!.env.example
 debug.keystore
 .vercel
 node_modules/
-.env*

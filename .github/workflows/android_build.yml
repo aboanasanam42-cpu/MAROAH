@@ -18,6 +18,24 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Ensure environment files exist
+        run: |
+          if [ ! -f .env.example ]; then
+            echo "Creating fallback .env.example..."
+            cat << 'EOF' > .env.example
+MEXC_API_KEY=placeholder
+MEXC_SECRET_KEY=placeholder
+BLOCKBYTE_API_KEY=placeholder
+BLOCKBYTE_SECRET_KEY=placeholder
+RAILWAY_URL=https://maroah-production.up.railway.app
+VERCEL_URL=https://maroah.vercel.app
+SESSION_TOKEN=msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA=
+EOF
+          fi
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:

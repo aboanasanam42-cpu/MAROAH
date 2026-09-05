@@ -60,6 +60,21 @@ android {
   }
 }
 
+val envExampleFile = rootProject.file(".env.example")
+if (!envExampleFile.exists()) {
+  envExampleFile.writeText(
+    """
+    MEXC_API_KEY=placeholder
+    MEXC_SECRET_KEY=placeholder
+    BLOCKBYTE_API_KEY=placeholder
+    BLOCKBYTE_SECRET_KEY=placeholder
+    RAILWAY_URL=https://maroah-production.up.railway.app
+    VERCEL_URL=https://maroah.vercel.app
+    SESSION_TOKEN=msIECkh7qAZXR5BfSpvTTCopXpvgDsOSyCyHMUKR0KA=
+    """.trimIndent()
+  )
+}
+
 secrets {
   propertiesFileName = ".env"
   defaultPropertiesFileName = ".env.example"
